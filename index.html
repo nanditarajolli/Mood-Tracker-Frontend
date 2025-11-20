@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Lumo Mood Tracker</title>
+
+  <!-- Google fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- AUTH OVERLAY -->
+  <div id="kindWordsBubble" class="kind-bubble hidden"></div>
+  <div id="authOverlay" class="auth-overlay" aria-hidden="false">
+    <div class="auth-card" role="dialog" aria-label="Login or Sign up">
+      <h2 id="authTitle">Welcome — sign in</h2>
+
+      <div class="auth-tabs">
+        <button id="tabSignIn" class="tab active">Sign in</button>
+        <button id="tabSignUp" class="tab">Sign up</button>
+      </div>
+
+      <div class="auth-form" id="signInForm">
+        <label>Username</label>
+        <input id="signinUser" type="text" placeholder="username" autocomplete="username" />
+        <label>Password</label>
+        <input id="signinPass" type="password" placeholder="password" autocomplete="current-password" />
+        <div class="auth-actions">
+          <button id="signinBtn" class="btn primary">Sign in</button>
+          <button id="guestBtn" class="btn outline">Continue as Guest</button>
+        </div>
+        <p class="small muted">This demo stores your account locally. For real auth, I can add Firebase/Auth0.</p>
+      </div>
+
+      <div class="auth-form" id="signUpForm" style="display:none">
+        <label>Choose username</label>
+        <input id="signupUser" type="text" placeholder="username" autocomplete="username" />
+        <label>Create password</label>
+        <input id="signupPass" type="password" placeholder="password" autocomplete="new-password" />
+        <div class="auth-actions">
+          <button id="signupBtn" class="btn primary">Create account</button>
+          <button id="backToSignIn" class="btn outline">Back</button>
+        </div>
+        <p class="small muted">Account stored locally for demo only.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- APP -->
+  <div class="app" id="app" hidden>
+    <header class="app-header" role="banner">
+      <div class="brand" aria-hidden="true">
+        <div class="logo">🌈</div>
+        <div>
+          <h1>Lumo Mood Tracker</h1>
+          <p class="muted">A mood tracker — log, reflect, and discover patterns</p>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <div class="user-area">
+          <div id="userBubble" class="user-bubble" title="Open profile"></div>
+          <div class="user-name" id="userNameDisplay">Guest</div>
+        </div>
+
+        <div class="theme-controls">
+          <label class="small muted">Theme</label>
+          <select id="themeSelect" title="Choose theme">
+            <option value="hotpink">Hot pink</option>
+            <option value="butter">Butter yellow</option>
+            <option value="babyblue">Baby blue</option>
+            <option value="pastelpurple">Pastel purple</option>
+            <option value="sunset">Sunset gradient</option>
+            <option value="metallic">Metallic</option>
+            <option value="matcha">Matcha green</option>
+          </select>
+          <button id="themeToggle" class="icon-btn" title="Toggle dark/light" aria-pressed="false">🌓</button>
+        </div>
+
+        <div class="top-actions">
+          <button id="profileBtn" class="btn outline">Edit profile</button>
+          <button id="signoutBtn" class="btn outline">Sign out</button>
+        </div>
+      </div>
+    </header>
+
+    <main class="grid" role="main">
+      <!-- left column -->
+      <section class="card entry-card" aria-labelledby="entryTitle">
+        <div class="card-header">
+          <div>
+            <h2 id="entryTitle">Log your mood</h2>
+            <p class="small muted">Select date, pick mood(s), use suggestions, and save — notes clear after save.</p>
+          </div>
+
+          <div class="controls-top">
+            <input id="dateInput" type="date" aria-label="Select date" />
+            <select id="rangeSelector" title="Chart range">
+              <option value="7">7d</option>
+              <option selected value="30">30d</option>
+              <option value="90">90d</option>
+              <option value="365">All</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="mode-row">
+          <label class="small muted">Entry mode</label>
+          <div class="mode-controls">
+            <label class="small"><input type="checkbox" id="multiMode"> Allow multiple moods</label>
+            <label class="small"><input type="checkbox" id="autoSuggest" checked> Show suggestions</label>
+          </div>
+        </div>
+
+        <div class="mood-row" role="group" aria-label="Mood selection" id="moodRow"></div>
+
+        <div id="selectedLabel" class="selected-label muted">Selected: —</div>
+
+        <div class="suggestions-row">
+          <div id="suggestionsWrap" class="suggestions" aria-live="polite"></div>
+          <button onclick="showKindWords()" class="btn">Show Kind Words</button>
+
+        </div>
+
+        <textarea id="note" placeholder="Short note (optional) — triggers, sleep, exercise, highlight..." rows="3" aria-label="Note"></textarea>
+
+        <div class="entry-actions">
+          <button id="saveBtn" class="btn primary">Save Entry</button>
+          <button id="editSaveBtn" class="btn primary" style="display:none">Update</button>
+          <button id="resetBtn" class="btn outline">Reset</button>
+        </div>
+
+        <div class="meta-row">
+          <div class="chip">Entries: <span id="countBadge">0</span></div>
+          <div class="chip">Avg: <strong id="avgBadge">—</strong></div>
+          <div class="chip">Streak: <strong id="streakBadge">0</strong></div>
+        </div>
+
+        <hr class="divider" />
+
+        <div class="chart-wrap">
+          <h3 class="small-title">Trend</h3>
+          <div class="chart-frame">
+            <canvas id="trendChart"></canvas>
+          </div>
+
+          <div class="chart-controls">
+            <label class="small muted">Overlay</label>
+            <select id="overlaySelect">
+              <option value="none">None</option>
+              <option value="ma7">7-day MA</option>
+              <option value="ma14">14-day MA</option>
+            </select>
+            <div id="pointDetail" class="point-detail muted">Click a point to see details</div>
+          </div>
+
+          <div class="chart-kpis">
+            <div>Weekly avg: <strong id="weeklyAvg">—</strong></div>
+            <div>Monthly avg: <strong id="monthlyAvg">—</strong></div>
+          </div>
+        </div>
+
+        <div class="affirmation" id="affirmationBox" aria-live="polite"></div>
+      </section>
+
+      <!-- right column -->
+      <aside class="stack" aria-labelledby="historyTitle">
+        <div class="card history-card" aria-describedby="historyDesc">
+          <div class="card-header">
+            <div>
+              <h3 id="historyTitle">Recent entries</h3>
+              <p id="historyDesc" class="muted small">Edit, delete, search notes & filter range</p>
+            </div>
+
+            <div class="history-controls">
+              <input id="searchNotes" placeholder="Search notes or moods..." aria-label="Search notes" />
+              <select id="filterRange">
+                <option value="7">Last 7d</option>
+                <option selected value="30">Last 30d</option>
+                <option value="365">All</option>
+              </select>
+            </div>
+          </div>
+
+          <ul id="historyList" class="history-list" aria-live="polite"></ul>
+        </div>
+
+        <div class="card heatmap-card">
+          <div class="heatmap-header">
+            <h3>Heatmap — last 90 days</h3>
+            <div class="heat-legend" id="heatLegend"></div>
+          </div>
+          <div id="heatmap" class="heatmap-grid" title="Mood heatmap"></div>
+          <p class="muted small" style="margin-top:8px">Darker = lower mood. Hover for details; click to edit that day.</p>
+        </div>
+
+        <div class="card settings-card">
+          <h3>Quick actions</h3>
+          <div class="stack-actions">
+            <button id="downloadBtn" class="btn outline small">Download backup (.json)</button>
+            <button id="importBtn" class="btn outline small">Import JSON</button>
+            <input id="importFile" type="file" accept="application/json" style="display:none" />
+            <div class="small muted" id="tzLabel"></div>
+          </div>
+        </div>
+      </aside>
+    </main>
+
+    <!-- bottom toolbar (small import/export/backup buttons) -->
+    <div class="bottom-toolbar">
+      <button id="importBottom" class="btn tiny outline">Import JSON</button>
+      <button id="backupBottom" class="btn tiny outline">Backup JSON</button>
+      <button id="exportBottom" class="btn tiny outline">Export CSV</button>
+    </div>
+
+    <footer class="app-footer" role="contentinfo">
+      <small>Lumo Mood Tracker - local-only by default. Want cloud sync? Ask me to add Firebase/Auth.</small>
+    </footer>
+  </div>
+
+  <!-- PROFILE MODAL -->
+  <div id="profileModal" class="modal" aria-hidden="true">
+    <div class="modal-card">
+      <h3>Edit profile</h3>
+      <label>Display name</label>
+      <input id="profileName" type="text" />
+      <label>Avatar color (hex)</label>
+      <input id="profileColor" type="color" />
+      <div class="modal-actions">
+        <button id="saveProfile" class="btn primary">Save</button>
+        <button id="closeProfile" class="btn outline">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+  <script src="script.js"></script>
+</body>
+</html>
